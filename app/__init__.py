@@ -289,8 +289,8 @@ def create_alert_http():
             print("")
             id = response.json()["id"]
         else:
-            print("ko: {}/{}".format(response.status_code, response.text))
-            sys.exit(0)
+            logging.error("ko: {}/{}".format(response.status_code, response.text))
+            return {"error": f"{{response.text}}"}
 
         return content["event_definition_title"]
     except Exception as e:
