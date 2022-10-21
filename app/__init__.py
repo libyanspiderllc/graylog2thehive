@@ -44,102 +44,112 @@ def create_alert():
     )
     logging.info(json.dumps(content))
 
-    # Configure API
-    api = TheHiveApi(app.config["HIVE_URL"], app.config["API_KEY"])
+    try:
 
-    # Configure artifacts
-    artifacts = []
+        # Configure API
+        api = TheHiveApi(app.config["HIVE_URL"], app.config["API_KEY"])
 
-    # Configure tags
-    tags = ["graylog"]
+        # Configure artifacts
+        artifacts = []
 
-    # Build description body and tags list
-    description = (
-        "Alert Condition: \n"
-        + content["check_result"]["triggered_condition"]["title"]
-        + "\n\nMatching messages:\n\n"
-    )
-    tags = ["graylog"]
-    for message in content["check_result"]["matching_messages"]:
+        # Configure tags
+        tags = ["graylog"]
 
+        # Build description body and tags list
         description = (
-            description
-            + "\n\n---\n\n**Source:** "
-            + message["source"]
-            + "\n\n**Log URL:** "
-            + app.config["GRAYLOG_URL"]
-            + "/messages/"
-            + message["index"]
-            + "/"
-            + message["id"]
-            + "\n\n"
+            "Alert Condition: \n"
+            + content["check_result"]["triggered_condition"]["title"]
+            + "\n\nMatching messages:\n\n"
+        )
+        tags = ["graylog"]
+        for message in content["check_result"]["matching_messages"]:
+
+            description = (
+                description
+                + "\n\n---\n\n**Source:** "
+                + message["source"]
+                + "\n\n**Log URL:** "
+                + app.config["GRAYLOG_URL"]
+                + "/messages/"
+                + message["index"]
+                + "/"
+                + message["id"]
+                + "\n\n"
+            )
+
+            for field in [
+                "threat_name",
+                "threat_tactic",
+                "threat_technique",
+                "threat_id",
+            ]:
+                try:
+                    if message["fields"][field] not in tags:
+                        tags.append(message["fields"][field])
+                except:
+                    pass
+
+            message_flattened = flatten_dict(message)
+            for key in message_flattened.keys():
+                if key != "message" and key != "source":
+                    description = (
+                        description
+                        + "\n**"
+                        + key
+                        + ":** "
+                        + json.dumps(
+                            message_flattened[key], ensure_ascii=False, encoding="utf8"
+                        )
+                        + "\n"
+                    )
+
+                # Use any IPs, hashes, URLs, filenames, etc here in place of src_ip and dst_ip to include them as artifacts/observables in your alert
+                if key == "src_ip" or key == "dst_ip":
+                    artifacts.append(
+                        AlertArtifact(
+                            dataType="ip", tags=[key], data=message_flattened[key]
+                        )
+                    )
+
+            description = (
+                description
+                + "\n\n**Raw Message:** \n\n```\n"
+                + json.dumps(message)
+                + "\n```\n---\n"
+            )
+
+        # Prepare alert
+        sourceRef = str(uuid.uuid4())[0:6]
+        alert = Alert(
+            title="Graylog Alert: "
+            + content["check_result"]["triggered_condition"]["title"],
+            tlp=2,
+            tags=tags,
+            description=description,
+            type="external",
+            source="graylog",
+            artifacts=artifacts,
+            sourceRef=sourceRef,
         )
 
-        for field in ["threat_name", "threat_tactic", "threat_technique", "threat_id"]:
-            try:
-                if message["fields"][field] not in tags:
-                    tags.append(message["fields"][field])
-            except:
-                pass
+        # Create the alert
+        print("Create Alert")
+        print("-----------------------------")
+        id = None
+        response = api.create_alert(alert)
+        if response.status_code == 201:
+            logging.info(json.dumps(response.json(), indent=4, sort_keys=True))
+            print(json.dumps(response.json(), indent=4, sort_keys=True))
+            print("")
+            id = response.json()["id"]
+        else:
+            print("ko: {}/{}".format(response.status_code, response.text))
+            sys.exit(0)
 
-        message_flattened = flatten_dict(message)
-        for key in message_flattened.keys():
-            if key != "message" and key != "source":
-                description = (
-                    description
-                    + "\n**"
-                    + key
-                    + ":** "
-                    + json.dumps(
-                        message_flattened[key], ensure_ascii=False, encoding="utf8"
-                    )
-                    + "\n"
-                )
-
-            # Use any IPs, hashes, URLs, filenames, etc here in place of src_ip and dst_ip to include them as artifacts/observables in your alert
-            if key == "src_ip" or key == "dst_ip":
-                artifacts.append(
-                    AlertArtifact(
-                        dataType="ip", tags=[key], data=message_flattened[key]
-                    )
-                )
-
-        description = (
-            description
-            + "\n\n**Raw Message:** \n\n```\n"
-            + json.dumps(message)
-            + "\n```\n---\n"
-        )
-
-    # Prepare alert
-    sourceRef = str(uuid.uuid4())[0:6]
-    alert = Alert(
-        title="Graylog Alert: "
-        + content["check_result"]["triggered_condition"]["title"],
-        tlp=2,
-        tags=tags,
-        description=description,
-        type="external",
-        source="graylog",
-        artifacts=artifacts,
-        sourceRef=sourceRef,
-    )
-
-    # Create the alert
-    print("Create Alert")
-    print("-----------------------------")
-    id = None
-    response = api.create_alert(alert)
-    if response.status_code == 201:
-        logging.info(json.dumps(response.json(), indent=4, sort_keys=True))
-        print(json.dumps(response.json(), indent=4, sort_keys=True))
-        print("")
-        id = response.json()["id"]
-    else:
-        print("ko: {}/{}".format(response.status_code, response.text))
-        sys.exit(0)
-
-    return content["check_result"]["result_description"]
+        return content["check_result"]["result_description"]
+    except Exception as e:
+        print(e)
+        return "Error: " + str(e)
 
 
 # Graylog HTTP Notification
@@ -175,7 +185,6 @@ def create_alert_http():
     )
     tags = ["graylog"]
     for message in content["backlog"]:
-
         description = (
             description
             + "\n\n---\n\n**Source:** "
