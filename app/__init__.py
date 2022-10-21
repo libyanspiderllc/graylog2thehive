@@ -97,9 +97,7 @@ def create_alert():
                         + "\n**"
                         + key
                         + ":** "
-                        + json.dumps(
-                            message_flattened[key], ensure_ascii=False, encoding="utf8"
-                        )
+                        + json.dumps(message_flattened[key], ensure_ascii=False)
                         + "\n"
                     )
 
@@ -218,9 +216,7 @@ def create_alert_http():
                         + "\n**"
                         + key
                         + ":** "
-                        + json.dumps(
-                            message_flattened[key], ensure_ascii=False, encoding="utf8"
-                        )
+                        + json.dumps(message_flattened[key], ensure_ascii=False)
                         + "\n"
                     )
 
