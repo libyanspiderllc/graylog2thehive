@@ -141,8 +141,16 @@ def create_alert_http():
                 description=description+"\n**"+key+":** "+json.dumps(message_flattened[key], ensure_ascii=False, encoding="utf8")+"\n"
 
             # Use any IPs, hashes, URLs, filenames, etc here in place of src_ip and dst_ip to include them as artifacts/observables in your alert
-            if key == "src_ip" or key == "dst_ip":
+            if key == "src_ip" or key == "dst_ip" or key == 'exim_sender_ip' or key == 'ip_address':
                 artifacts.append(AlertArtifact(dataType='ip', tags=[key], data=message_flattened[key]))
+
+            if key == 'sender_email' or key == 'email_address' or key == 'sender' or key == 'Sender':
+                artifacts.append(AlertArtifact(dataType='mail', tags=[key], data=message_flattened[key]))
+            
+            if key == 'subject':
+                artifacts.append(AlertArtifact(dataType='mail-subject', tags=[key], data=message_flattened[key]))
+
+            
 
         description=description+'\n\n**Raw Message:** \n\n```\n'+json.dumps(message)+'\n```\n---\n'
 

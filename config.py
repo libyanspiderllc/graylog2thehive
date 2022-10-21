@@ -3,6 +3,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config(object):
     API_KEY=os.environ.get('HIVE_SECRET_KEY')
-    HIVE_URL='https://myhive.mycompany.com'
+    HIVE_URL=os.environ.get('HIVE_URL')
     LOG_FILE='/var/log/graylog2thehive.log'
-    GRAYLOG_URL='https://graylog.mycompany.com'
+    GRAYLOG_URL=os.environ.get('GRAYLOG_URL')
