@@ -208,7 +208,7 @@ def create_alert_http():
                 ):
                     artifacts.append(
                         AlertArtifact(
-                            dataType="mail", tags=[key], data=message_flattened[key]
+                            dataType="mail", tags=[key], data=flattend_fields[key]
                         )
                     )
 
@@ -217,7 +217,7 @@ def create_alert_http():
                     AlertArtifact(
                         dataType="mail-subject",
                         tags=[key],
-                        data=message_flattened[key],
+                        data=flattend_fields[key],
                     )
                 )
 
