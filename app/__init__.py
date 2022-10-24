@@ -182,6 +182,45 @@ def create_alert_http():
             + "\n\nMatching messages:\n\n"
         )
         tags = ["graylog"]
+        fields = content["event"]["fields"]
+        flattend_fields = flatten_dict(fields)
+        for key in flattend_fields.keys():
+            if key != "message" and key != "source":
+                description = (
+                    description
+                    + "\n**"
+                    + key
+                    + ":** "
+                    + json.dumps(flattend_fields[key], ensure_ascii=False)
+                    + "\n"
+                )
+
+            # Use any IPs, hashes, URLs, filenames, etc here in place of src_ip and dst_ip to include them as artifacts/observables in your alert
+            if key == "src_ip" or key == "dst_ip" or key == 'exim_sender_ip':
+                artifacts.append(
+                    AlertArtifact(dataType="ip", tags=[key], data=flattend_fields[key])
+                )
+            elif (
+                    key == "sender_email"
+                    or key == "email_address"
+                    or key == "sender"
+                    or key == "Sender"
+                ):
+                    artifacts.append(
+                        AlertArtifact(
+                            dataType="mail", tags=[key], data=message_flattened[key]
+                        )
+                    )
+
+            elif key == "subject":
+                artifacts.append(
+                    AlertArtifact(
+                        dataType="mail-subject",
+                        tags=[key],
+                        data=message_flattened[key],
+                    )
+                )
+
         for message in content["backlog"]:
             description = (
                 description
