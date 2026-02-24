@@ -177,9 +177,11 @@ def create_alert_http():
 
         # Build description body and tags list
         description = (
-            "Alert Condition: \n"
+            "Event Title: \n"
             + content["event_definition_title"]
-            + "\n\nMatching messages:\n\n"
+            + "\n\nEvent Description: \n"
+            + content["event_definition_description"]
+            + "\n\nEvent Keys:\n\n"
         )
         tags = ["graylog"]
         fields = content["event"]["fields"]
@@ -196,7 +198,7 @@ def create_alert_http():
                 )
 
             # Use any IPs, hashes, URLs, filenames, etc here in place of src_ip and dst_ip to include them as artifacts/observables in your alert
-            if key == "src_ip" or key == "dst_ip" or key == 'exim_sender_ip':
+            if key == "src_ip" or key == "dst_ip" or key == 'exim_sender_ip' or key == 'ip_address':
                 artifacts.append(
                     AlertArtifact(dataType="ip", tags=[key], data=flattend_fields[key])
                 )
@@ -218,6 +220,13 @@ def create_alert_http():
                         dataType="mail-subject",
                         tags=[key],
                         data=flattend_fields[key],
+                    )
+                )
+            
+            elif key == "cpanel_user":
+                artifacts.append(
+                    AlertArtifact(
+                        dataType="user", tags=[key], data=flattend_fields[key]
                     )
                 )
 
@@ -292,6 +301,13 @@ def create_alert_http():
                             data=message_flattened[key],
                         )
                     )
+                
+                elif key == "cpanel_user":
+                    artifacts.append(
+                        AlertArtifact(
+                            dataType="user", tags=[key], data=message_flattened[key]
+                        )
+                    )
 
             description = (
                 description
@@ -303,7 +319,7 @@ def create_alert_http():
         # Prepare alert
         sourceRef = str(uuid.uuid4())[0:6]
         alert = Alert(
-            title="Graylog Alert: " + content["event_definition_title"],
+            title="Graylog Alert: " + content["event_definition_title"] + " - " + " - ".join(content["event"]["key_tuple"]),
             tlp=2,
             tags=tags,
             description=description,
